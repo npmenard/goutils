@@ -79,6 +79,8 @@ func (ans *webrtcSignalingAnswerer) Start() {
 func (ans *webrtcSignalingAnswerer) startAnswerer() {
 	var connInUse ClientConn
 	var connMu sync.Mutex
+
+	ans.logger.Errorf("+++++++ running wrtc answerer by connecting to %s with opts %+v", ans.address, ans.dialOpts)
 	reconnect := func() error {
 		connMu.Lock()
 		conn := connInUse
@@ -114,6 +116,7 @@ func (ans *webrtcSignalingAnswerer) startAnswerer() {
 		client := webrtcpb.NewSignalingServiceClient(conn)
 		md := metadata.New(nil)
 		md.Append(RPCHostMetadataField, ans.hosts...)
+		ans.logger.Errorf("++++++++ wrtc answerer configured with hosts %v", ans.hosts)
 		answerCtx := metadata.NewOutgoingContext(ans.closeCtx, md)
 		answerClient, err := client.Answer(answerCtx)
 		if err != nil {
@@ -195,7 +198,7 @@ func (ans *webrtcSignalingAnswerer) answer(client webrtcpb.SignalingService_Answ
 	if err != nil {
 		return err
 	}
-
+	ans.logger.Errorf("++++++ Reveived offer %v", resp)
 	uuid := resp.Uuid
 	initStage, ok := resp.Stage.(*webrtcpb.AnswerRequest_Init)
 	if !ok {
@@ -279,12 +282,15 @@ func (ans *webrtcSignalingAnswerer) answer(client webrtcpb.SignalingService_Answ
 			return err
 		}
 
+		ans.logger.Errorf("Creating answer %v", answer)
+
 		var callFlowWG sync.WaitGroup
-		pc.OnICECandidate(func(i *webrtc.ICECandidate) {
+		pc.OnICECandidate(func(iICECan *webrtc.ICECandidate) {
+			ans.logger.Errorf("+++++++ received ICE CANDIDATE %v", iICECan)
 			if exchangeCtx.Err() != nil {
 				return
 			}
-			if i != nil {
+			if iICECan != nil {
 				callFlowWG.Add(1)
 			}
 			// must spin off to unblock the ICE gatherer
@@ -294,7 +300,7 @@ func (ans *webrtcSignalingAnswerer) answer(client webrtcpb.SignalingService_Answ
 				case <-exchangeCtx.Done():
 					return
 				}
-				if i == nil {
+				if iICECan == nil {
 					callFlowWG.Wait()
 					if err := sendDone(); err != nil {
 						sendErr(err)
@@ -302,15 +308,17 @@ func (ans *webrtcSignalingAnswerer) answer(client webrtcpb.SignalingService_Answ
 					return
 				}
 				defer callFlowWG.Done()
-				iProto := iceCandidateToProto(i)
-				if err := client.Send(&webrtcpb.AnswerResponse{
+				iProto := iceCandidateToProto(iICECan)
+				iProtoMsg := &webrtcpb.AnswerResponse{
 					Uuid: uuid,
 					Stage: &webrtcpb.AnswerResponse_Update{
 						Update: &webrtcpb.AnswerResponseUpdateStage{
 							Candidate: iProto,
 						},
 					},
-				}); err != nil {
+				}
+				ans.logger.Errorf("+++++++ FROM received ICE CANDIDATE %v response will be %v", iICECan, iProtoMsg)
+				if err := client.Send(iProtoMsg); err != nil {
 					sendErr(err)
 				}
 			})
@@ -373,6 +381,7 @@ func (ans *webrtcSignalingAnswerer) answer(client webrtcpb.SignalingService_Answ
 						return errors.Errorf("uuid mismatch; have=%q want=%q", ansResp.Uuid, uuid)
 					}
 					cand := iceCandidateFromProto(s.Update.Candidate)
+					ans.logger.Errorf("------ Receiving candidate %+v", cand)
 					if err := pc.AddICECandidate(cand); err != nil {
 						return err
 					}

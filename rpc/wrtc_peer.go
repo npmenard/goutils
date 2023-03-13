@@ -48,6 +48,7 @@ func newWebRTCAPI(logger golog.Logger) (*webrtc.API, error) {
 	if utils.Debug {
 		settingEngine.LoggerFactory = WebRTCLoggerFactory{logger}
 	}
+	settingEngine.LoggerFactory = WebRTCLoggerFactory{logger}
 	options = append(options, webrtc.WithSettingEngine(settingEngine))
 	return webrtc.NewAPI(options...), nil
 }
@@ -62,7 +63,6 @@ func newPeerConnectionForClient(
 	if err != nil {
 		return nil, nil, err
 	}
-
 	pc, err = webAPI.NewPeerConnection(config)
 	if err != nil {
 		return nil, nil, err
@@ -125,11 +125,13 @@ func newPeerConnectionForServer(
 	logger golog.Logger,
 ) (pc *webrtc.PeerConnection, dc *webrtc.DataChannel, err error) {
 	webAPI, err := newWebRTCAPI(logger)
+
 	if err != nil {
 		return nil, nil, err
 	}
 
 	pc, err = webAPI.NewPeerConnection(config)
+
 	if err != nil {
 		return nil, nil, err
 	}
@@ -145,6 +147,7 @@ func newPeerConnectionForServer(
 	var negotiationChannel *webrtc.DataChannel
 	var makingOffer bool
 	pc.OnNegotiationNeeded(func() {
+		logger.Error("+++++ negociation needed")
 		negMu.Lock()
 		if !negOpen {
 			negMu.Unlock()
@@ -156,6 +159,7 @@ func newPeerConnectionForServer(
 			makingOffer = false
 		}()
 		offer, err := pc.CreateOffer(nil)
+		logger.Errorf("+++++ Offering this %+v", offer)
 		if err != nil {
 			logger.Errorw("renegotiation: error creating offer", "error", err)
 			return
@@ -173,6 +177,7 @@ func newPeerConnectionForServer(
 			logger.Errorw("renegotiation: error sending SDP", "error", err)
 			return
 		}
+		logger.Errorf("++++ negotiation sent over channel %d", negotiationChannel.ID())
 	})
 
 	negotiated := true

@@ -20,11 +20,11 @@ func (l webrtcLogger) loggerWithSkip() golog.Logger {
 }
 
 func (l webrtcLogger) Trace(msg string) {
-	l.loggerWithSkip().Debug(msg)
+	l.loggerWithSkip().Info(msg)
 }
 
 func (l webrtcLogger) Tracef(format string, args ...interface{}) {
-	l.loggerWithSkip().Debugf(format, args...)
+	l.loggerWithSkip().Infof(format, args...)
 }
 
 func (l webrtcLogger) Debug(msg string) {
