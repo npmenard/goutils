@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"hash/fnv"
+	"os"
 	"strings"
 	"sync"
 
@@ -29,6 +30,10 @@ import (
 
 // create a new TLS config with the default options for RPC.
 func newDefaultTLSConfig() *tls.Config {
+	if keyLog := os.Getenv("SSLKEYLOGFILE"); len(keyLog) != 0 {
+		w, _ := os.OpenFile(keyLog, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+		return &tls.Config{MinVersion: tls.VersionTLS12, KeyLogWriter: w}
+	}
 	return &tls.Config{MinVersion: tls.VersionTLS12}
 }
 

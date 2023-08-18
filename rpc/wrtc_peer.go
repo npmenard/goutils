@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"os"
 	"sync"
 	"time"
 
@@ -53,6 +54,10 @@ func newWebRTCAPI(isClient bool, logger golog.Logger) (*webrtc.API, error) {
 	// while the client (controlling) provides an mDNS candidate that may resolve to 127.0.0.1.
 	settingEngine.SetIncludeLoopbackCandidate(true)
 	settingEngine.SetRelayAcceptanceMinWait(3 * time.Second)
+	if keyLog := os.Getenv("SSLKEYLOGFILE"); len(keyLog) != 0 {
+		w, _ := os.OpenFile(keyLog, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+		settingEngine.SetDTLSKeyLogWriter(w)
+	}
 
 	options := []func(a *webrtc.API){webrtc.WithMediaEngine(&m), webrtc.WithInterceptorRegistry(&i)}
 	if utils.Debug {
