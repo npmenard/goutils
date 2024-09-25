@@ -331,8 +331,11 @@ func (srv *WebRTCSignalingServer) Answer(server webrtcpb.SignalingService_Answer
 	}
 	defer srv.clearAdditionalICEServers(hosts)
 
+	srv.logger.Infof("will try to get an offer %v", hosts)
+
 	offer, err := srv.callQueue.RecvOffer(ctx, hosts)
 	if err != nil {
+		srv.logger.Error("Will leave Answer Call early")
 		return err
 	}
 
@@ -340,6 +343,8 @@ func (srv *WebRTCSignalingServer) Answer(server webrtcpb.SignalingService_Answer
 	if err != nil {
 		return err
 	}
+
+	srv.logger.Info("have offer")
 
 	// initialize
 	uuid := offer.UUID()

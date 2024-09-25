@@ -218,8 +218,10 @@ func (queue *memoryWebRTCCallQueue) RecvOffer(ctx context.Context, hosts []strin
 
 	select {
 	case <-ctx.Done():
+		queue.logger.Errorf("RecvOffer context cancelled reason %v", ctx.Err())
 		return nil, ctx.Err()
 	case <-recvCtx.Done():
+		queue.logger.Errorf("RecvCtx context cancelled reason %v", ctx.Err())
 		return nil, recvCtx.Err()
 	case exchange := <-hostQueue.exchangeCh:
 		return exchange, nil
