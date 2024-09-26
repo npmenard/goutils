@@ -332,7 +332,7 @@ func (srv *WebRTCSignalingServer) Answer(server webrtcpb.SignalingService_Answer
 	defer srv.clearAdditionalICEServers(hosts)
 
 	srv.logger.Infof("will try to get an offer %v", hosts)
-
+	server.SendHeader(nil)
 	offer, err := srv.callQueue.RecvOffer(ctx, hosts)
 	if err != nil {
 		srv.logger.Error("Will leave Answer Call early")
