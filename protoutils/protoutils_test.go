@@ -458,3 +458,25 @@ type ErrnoStruct struct {
 type ErrnoStructReturn struct {
 	Errno int
 }
+
+func TestStructToStructPbPointerScalars(t *testing.T) {
+	// Regression: pointer-to-float and pointer-to-bool fields must be dereferenced,
+	f64 := 42.5
+	f32 := float32(1.5)
+	b := true
+	i := 7
+	s := "hi"
+	sp, err := StructToStructPb(map[string]interface{}{
+		"max_velocity": &f64,
+		"ratio":        &f32,
+		"flag":         &b,
+		"count":        &i,
+		"label":        &s,
+	})
+	test.That(t, err, test.ShouldBeNil)
+	test.That(t, sp.Fields["max_velocity"].GetNumberValue(), test.ShouldEqual, 42.5)
+	test.That(t, sp.Fields["ratio"].GetNumberValue(), test.ShouldEqual, 1.5)
+	test.That(t, sp.Fields["flag"].GetBoolValue(), test.ShouldBeTrue)
+	test.That(t, sp.Fields["count"].GetNumberValue(), test.ShouldEqual, 7)
+	test.That(t, sp.Fields["label"].GetStringValue(), test.ShouldEqual, "hi")
+}
